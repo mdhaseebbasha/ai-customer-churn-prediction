@@ -1,0 +1,920 @@
+"""
+AI-Powered Customer Churn & Behavior Intelligence Platform
+Streamlit Application - Professional Dark AI Analytics Theme (#0B1120)
+Fully Dataset-Independent Pipeline with Model Performance Metrics & ROC Curve
+"""
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import os
+import sys
+import plotly.express as px
+import plotly.graph_objects as go
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    confusion_matrix,
+    roc_curve,
+    roc_auc_score
+)
+
+# Add src to path for importing ChurnPredictor
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from predict_churn import ChurnPredictor
+
+st.set_page_config(
+    page_title="AI Customer Churn Intelligence",
+    page_icon="⚡",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Custom CSS for Dark AI Analytics Theme
+st.markdown("""
+<style>
+    /* Global Base */
+    html, body, [data-testid="stAppViewContainer"] {
+        background-color: #0B1120 !important;
+        color: #F8FAFC !important;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+    }
+    
+    [data-testid="stHeader"] {
+        background-color: rgba(11, 17, 32, 0.8) !important;
+        backdrop-filter: blur(8px);
+    }
+    
+    /* Layout Container Spacing */
+    .block-container {
+        padding-top: 1.5rem !important;
+        padding-bottom: 2rem !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+        max-width: 100% !important;
+    }
+    
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background-color: #0F172A !important;
+        border-right: 1px solid #1E293B !important;
+        width: 280px !important;
+    }
+    
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+        color: #94A3B8 !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.05em !important;
+        margin-bottom: 8px !important;
+    }
+
+    /* Radio button custom navigation styling */
+    [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] {
+        gap: 6px;
+    }
+
+    [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label {
+        background-color: #172033 !important;
+        color: #94A3B8 !important;
+        border: 1px solid #1E293B !important;
+        border-radius: 8px !important;
+        padding: 10px 14px !important;
+        font-weight: 500 !important;
+        font-size: 14px !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        margin: 0 !important;
+        width: 100% !important;
+    }
+
+    [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label:hover {
+        background-color: #1E293B !important;
+        color: #F8FAFC !important;
+        border-color: #334155 !important;
+    }
+
+    [data-testid="stSidebar"] .stRadio > div[role="radiogroup"] label[data-checked="true"] {
+        background-color: #6366F1 !important;
+        color: #FFFFFF !important;
+        border-color: #6366F1 !important;
+        font-weight: 600 !important;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35) !important;
+    }
+
+    /* Header Banner Card */
+    .header-card {
+        background: linear-gradient(135deg, #111827 0%, #172033 100%);
+        border: 1px solid #1E293B;
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .header-title {
+        font-size: 30px;
+        font-weight: 700;
+        color: #F8FAFC;
+        margin: 0;
+        line-height: 1.2;
+        letter-spacing: -0.02em;
+    }
+    .header-subtitle {
+        font-size: 14px;
+        color: #94A3B8;
+        margin-top: 6px;
+        margin-bottom: 0;
+    }
+
+    /* KPI Cards */
+    .kpi-card {
+        background-color: #111827;
+        border: 1px solid #1E293B;
+        border-radius: 10px;
+        padding: 16px 18px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        height: 100%;
+    }
+    .kpi-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: #94A3B8;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 4px;
+    }
+    .kpi-value {
+        font-size: 26px;
+        font-weight: 700;
+        color: #06B6D4;
+        line-height: 1.2;
+        margin-bottom: 4px;
+    }
+
+    /* Bright native Streamlit metric values */
+    [data-testid="stMetricValue"] {
+        color: #FFFFFF !important;
+        font-weight: 800 !important;
+        font-size: 30px !important;
+    }
+
+    [data-testid="stMetricLabel"] {
+        color: #CBD5E1 !important;
+        font-weight: 700 !important;
+        font-size: 12px !important;
+    }
+
+    [data-testid="stMetricDelta"] {
+        color: #FFFFFF !important;
+    }
+
+    .kpi-subtext {
+        font-size: 12px;
+        color: #94A3B8;
+    }
+
+    /* Generic Dark Analytics Card */
+    .dark-card {
+        background-color: #111827;
+        border: 1px solid #1E293B;
+        border-radius: 12px;
+        padding: 20px 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    }
+    
+    .dark-card-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #F8FAFC;
+        margin-bottom: 14px;
+        letter-spacing: -0.01em;
+    }
+
+    /* Streamlit DataFrame & Input Dark Overrides */
+    [data-testid="stDataFrame"] {
+        background-color: #111827 !important;
+        border: 1px solid #1E293B !important;
+        border-radius: 10px !important;
+        padding: 8px !important;
+    }
+
+    /* File Uploader Dark Theme Override */
+    [data-testid="stFileUploader"], [data-testid="stFileUploader"] section {
+        background-color: #111827 !important;
+        border: 1px dashed #334155 !important;
+        border-radius: 10px !important;
+        color: #F8FAFC !important;
+    }
+    [data-testid="stFileUploader"] section small, [data-testid="stFileUploader"] span, [data-testid="stFileUploader"] p {
+        color: #94A3B8 !important;
+    }
+    
+    /* Input Fields, Selectboxes, Dropdowns & Sliders */
+    input, select, textarea, div[data-baseweb="select"] > div {
+        background-color: #172033 !important;
+        color: #F8FAFC !important;
+        border-color: #1E293B !important;
+        border-radius: 8px !important;
+    }
+    div[data-baseweb="popover"], div[data-baseweb="menu"], ul[role="listbox"] {
+        background-color: #172033 !important;
+        color: #F8FAFC !important;
+        border: 1px solid #1E293B !important;
+    }
+    li[role="option"] {
+        background-color: #172033 !important;
+        color: #F8FAFC !important;
+    }
+    li[role="option"]:hover, li[aria-selected="true"] {
+        background-color: #1E293B !important;
+        color: #6366F1 !important;
+    }
+    
+    /* Multiselect Tag Badges */
+    span[data-baseweb="tag"] {
+        background-color: #1E293B !important;
+        color: #F8FAFC !important;
+        border: 1px solid #334155 !important;
+    }
+
+    /* Slider styling */
+    [data-testid="stSlider"] div {
+        color: #F8FAFC !important;
+    }
+
+    .stButton > button {
+        background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%) !important;
+        color: #FFFFFF !important;
+        border: none !important;
+        border-radius: 8px !important;
+        font-weight: 600 !important;
+        font-size: 15px !important;
+        padding: 12px 24px !important;
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35) !important;
+        width: 100% !important;
+        transition: all 0.2s ease !important;
+    }
+    .stButton > button:hover {
+        background: linear-gradient(135deg, #4F46E5 0%, #4338CA 100%) !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 6px 18px rgba(99, 102, 241, 0.45) !important;
+    }
+
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+</style>
+""", unsafe_allow_html=True)
+
+# Helper function for Plotly dark theme
+def apply_dark_plotly_theme(fig, title=""):
+    fig.update_layout(
+        title=dict(
+            text=title,
+            font=dict(size=15, color="#F8FAFC", family="Inter, sans-serif"),
+            x=0.0,
+            y=0.96
+        ) if title else None,
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(color="#94A3B8", family="Inter, sans-serif"),
+        margin=dict(l=20, r=20, t=40 if title else 20, b=20),
+        xaxis=dict(
+            gridcolor="#1E293B",
+            zerolinecolor="#1E293B",
+            tickfont=dict(color="#94A3B8"),
+            title_font=dict(color="#F8FAFC")
+        ),
+        yaxis=dict(
+            gridcolor="#1E293B",
+            zerolinecolor="#1E293B",
+            tickfont=dict(color="#94A3B8"),
+            title_font=dict(color="#F8FAFC")
+        ),
+        legend=dict(
+            font=dict(color="#F8FAFC"),
+            bgcolor='rgba(17,24,39,0.8)',
+            bordercolor='#1E293B'
+        )
+    )
+    return fig
+
+# Initialize Predictor
+base_dir = os.path.dirname(os.path.abspath(__file__))
+predictor = ChurnPredictor(models_dir=os.path.join(base_dir, "models"))
+
+# Header Rendering
+st.markdown("""
+<div class="header-card">
+    <div class="header-title">AI-Powered Customer Churn &amp; Behavior Intelligence Platform</div>
+    <div class="header-subtitle">Predict churn. Understand behavior. Take proactive retention actions.</div>
+</div>
+""", unsafe_allow_html=True)
+
+# Sidebar Navigation
+st.sidebar.markdown("Navigation")
+nav = st.sidebar.radio("Navigation", [
+    "1. Upload Dataset",
+    "2. Dataset & Churn Summary",
+    "3. Customer Risk Table",
+    "4. Why Customers May Churn",
+    "5. Behavior Mining",
+    "6. Model Performance & ROC Curve"
+])
+
+# Sidebar Risk Threshold Controls
+st.sidebar.markdown("---")
+st.sidebar.markdown("Risk Threshold Settings")
+high_thresh = st.sidebar.slider("High Risk Threshold", min_value=0.50, max_value=0.90, value=0.60, step=0.05)
+low_thresh = st.sidebar.slider("Low Risk Threshold", min_value=0.10, max_value=0.45, value=0.30, step=0.05)
+
+# Clear previous session state helper
+def reset_dataset_state():
+    st.session_state['df_raw'] = None
+    st.session_state['df_analyzed'] = None
+    st.session_state['is_analyzed'] = False
+    st.session_state['act_col'] = None
+    st.session_state['churn_col'] = None
+
+# Helper function to run analysis
+def run_dataset_analysis(df_input):
+    with st.spinner(f"Analyzing all {len(df_input)} customers across ML prediction and behavior mining pipelines..."):
+        df_res = predictor.predict_batch(df_input, high_thresh=high_thresh, low_thresh=low_thresh)
+        st.session_state['df_raw'] = df_input
+        st.session_state['df_analyzed'] = df_res
+        st.session_state['is_analyzed'] = True
+        st.session_state['act_col'] = predictor.detect_activity_column(df_input)
+        st.session_state['churn_col'] = predictor.detect_churn_column(df_input)
+
+        # Use metrics calculated on the independent test split inside the ML pipeline.
+        # Do not recompute them against predictions for the same rows used for training.
+        st.session_state['metrics'] = df_res.attrs.get('metrics', {
+            'Accuracy': 'N/A', 'Precision': 'N/A', 'Recall': 'N/A',
+            'F1-Score': 'N/A', 'ROC-AUC': 'N/A'
+        })
+        st.session_state['confusion_matrix'] = df_res.attrs.get(
+            'confusion_matrix', np.array([[0, 0], [0, 0]])
+        )
+        st.session_state['roc_curve'] = df_res.attrs.get(
+            'roc_curve', {'fpr': [0.0, 1.0], 'tpr': [0.0, 1.0], 'auc': None}
+        )
+
+# Helper check for analysis state
+def check_analysis_ready():
+    if not st.session_state.get('is_analyzed', False) or st.session_state.get('df_analyzed') is None:
+        st.warning("⚠️ No uploaded dataset has been analyzed yet! Please navigate to '1. Upload Dataset' and upload your CSV.")
+        if st.button("⚡ Quick Test: Load Included Customer Dataset"):
+            sample_path = os.path.join(base_dir, "cleaned_customer_churn.csv")
+            if os.path.exists(sample_path):
+                df_sample = pd.read_csv(sample_path)
+                st.session_state['uploaded_df'] = df_sample
+                run_dataset_analysis(df_sample)
+                st.rerun()
+        return False
+
+    df_res = st.session_state['df_analyzed']
+    if 'BehaviorSegment' not in df_res.columns:
+        df_res['BehaviorSegment'] = df_res.get('BehaviorCluster', 'Segment 1: Core Customer Base')
+    if 'BehaviorCluster' not in df_res.columns:
+        df_res['BehaviorCluster'] = df_res['BehaviorSegment']
+    return True
+
+# PAGE 1: UPLOAD DATASET
+if nav == "1. Upload Dataset":
+    st.markdown("""
+    <div class="dark-card">
+        <div class="dark-card-title">📁 Upload Customer Dataset (CSV)</div>
+        <p style="color: #94A3B8; font-size: 14px; margin-bottom: 12px;">
+            Upload ANY customer dataset to run automatic dataset inspection, ML churn prediction, risk classification, and behavior mining.
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    uploaded_file = st.file_uploader("Browse CSV file containing customer records", type=["csv"], key="uploader")
+
+    if uploaded_file is not None:
+        file_id = f"{uploaded_file.name}_{uploaded_file.size}"
+        if st.session_state.get('last_uploaded_file') != file_id:
+            reset_dataset_state()
+            try:
+                df_uploaded = pd.read_csv(uploaded_file)
+                st.session_state['uploaded_df'] = df_uploaded
+                st.session_state['last_uploaded_file'] = file_id
+                st.success(f"Dataset '{uploaded_file.name}' loaded successfully! ({len(df_uploaded)} records)")
+            except Exception as e:
+                st.error(f"Error reading CSV file: {e}")
+
+    df_curr = st.session_state.get('uploaded_df', None)
+
+    if df_curr is not None:
+        st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div class='dark-card-title'>🔍 Dataset Detection &amp; Feature Validation</div>", unsafe_allow_html=True)
+
+        total_rows = len(df_curr)
+        total_cols = len(df_curr.columns)
+        missing_count = int(df_curr.isnull().sum().sum())
+        dup_count = int(df_curr.duplicated().sum())
+        
+        act_col = predictor.detect_activity_column(df_curr)
+        churn_col = predictor.detect_churn_column(df_curr)
+        id_col = predictor.detect_id_column(df_curr)
+
+        # Historical Churn calculation
+        if churn_col is not None:
+            churn_series = df_curr[churn_col].astype(str).str.lower()
+            hist_yes = (churn_series.str.strip().isin(['yes', '1', 'true', 'churned', 'churn', 'y', 'exited', 'cancelled', 'canceled'])).sum()
+            hist_no = total_rows - hist_yes
+            hist_rate = (hist_yes / total_rows) * 100 if total_rows > 0 else 0.0
+            hist_str = f"{hist_yes} Yes / {hist_no} No ({hist_rate:.1f}%)"
+        else:
+            hist_yes, hist_no, hist_rate = None, None, None
+            hist_str = "No Historical Labels"
+
+        v1, v2, v3, v4, v5, v6 = st.columns(6)
+        v1.metric("TOTAL CUSTOMERS", f"{total_rows:,}")
+        v2.metric("TOTAL FEATURES", f"{total_cols}")
+        v3.metric("MISSING VALUES", f"{missing_count:,}")
+        v4.metric("DUPLICATES", f"{dup_count}")
+        v5.metric("ACTIVITY FEATURE", f"{act_col}" if act_col else "None ⚠️")
+        v6.metric("HISTORICAL CHURN", f"{hist_rate:.1f}%" if hist_rate is not None else "N/A")
+
+        act_msg = f"✓ Active Days feature detected: '{act_col}'" if act_col else "⚠️ Activity feature not available in this dataset."
+        id_msg = f"✓ Customer ID column detected: '{id_col}'" if id_col else "⚠️ Synthetic Customer IDs generated (CUST-0001+)"
+        churn_msg = f"✓ Historical churn label detected: '{churn_col}' ({hist_str})" if churn_col else "ℹ️ Historical churn labels were not found in this dataset."
+
+        st.markdown(f"""
+        <div class="dark-card">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div style="background-color: #172033; padding: 12px 16px; border-radius: 8px; border: 1px solid #1E293B;">
+                    <div style="font-weight: 600; color: #F8FAFC;">1. File &amp; Record Size</div>
+                    <div style="color: #22C55E; font-size: 13px;">✓ Exactly {total_rows} customer records ({total_cols} columns)</div>
+                </div>
+                <div style="background-color: #172033; padding: 12px 16px; border-radius: 8px; border: 1px solid #1E293B;">
+                    <div style="font-weight: 600; color: #F8FAFC;">2. Customer Identifier</div>
+                    <div style="color: {'#22C55E' if id_col else '#F59E0B'}; font-size: 13px;">{id_msg}</div>
+                </div>
+                <div style="background-color: #172033; padding: 12px 16px; border-radius: 8px; border: 1px solid #1E293B;">
+                    <div style="font-weight: 600; color: #F8FAFC;">3. Activity / Usage Signal</div>
+                    <div style="color: {'#22C55E' if act_col else '#F59E0B'}; font-size: 13px;">{act_msg}</div>
+                </div>
+                <div style="background-color: #172033; padding: 12px 16px; border-radius: 8px; border: 1px solid #1E293B;">
+                    <div style="font-weight: 600; color: #F8FAFC;">4. Historical Churn Target</div>
+                    <div style="color: {'#22C55E' if churn_col else '#94A3B8'}; font-size: 13px;">{churn_msg}</div>
+                </div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if not act_col:
+            st.info("ℹ️ Activity feature not available in this dataset. Active-day analysis will be excluded without inventing fake values.")
+
+        if not churn_col:
+            st.info("ℹ️ Historical churn labels were not found in this dataset. Supervised historical retraining will be skipped; behavioral risk scoring will evaluate customer risk levels.")
+
+        st.subheader("Uploaded Dataset Preview")
+        st.dataframe(df_curr.head(10), width="stretch")
+
+        st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+        if st.button(f"⚡ ANALYZE CUSTOMER DATASET ({total_rows} RECORDS)"):
+            reset_dataset_state()
+            run_dataset_analysis(df_curr)
+            st.success(f"✅ Analysis complete for exactly {total_rows} customers! Navigate to '2. Dataset & Churn Summary' or '3. Customer Risk Table'.")
+
+# PAGE 2: DATASET & CHURN SUMMARY
+elif nav == "2. Dataset & Churn Summary":
+    if check_analysis_ready():
+        df_res = st.session_state['df_analyzed']
+        df_raw = st.session_state['df_raw']
+        total_cust = len(df_res)
+        
+        high_risk_count = (df_res['RiskLevel'] == 'High Risk').sum()
+        med_risk_count = (df_res['RiskLevel'] == 'Medium Risk').sum()
+        low_risk_count = (df_res['RiskLevel'] == 'Low Risk').sum()
+        
+        pred_churn_count = (df_res['PredictedChurn'] == 'Yes').sum()
+        pred_churn_rate = (pred_churn_count / total_cust) * 100 if total_cust > 0 else 0.0
+        
+        act_col = st.session_state.get('act_col')
+        churn_col = st.session_state.get('churn_col')
+        
+        if act_col and 'ActiveDays' in df_res.columns and df_res['ActiveDays'].notnull().any():
+            avg_act_days = df_res['ActiveDays'].dropna().mean()
+            act_str = f"{avg_act_days:.1f}d"
+        else:
+            avg_act_days = None
+            act_str = "N/A"
+
+        # Calculate Historical Churn Rate
+        if churn_col and churn_col in df_raw.columns:
+            churn_series = df_raw[churn_col].astype(str).str.lower()
+            hist_yes = (churn_series.str.strip().isin(['yes', '1', 'true', 'churned', 'churn', 'y', 'exited', 'cancelled', 'canceled'])).sum()
+            hist_rate = (hist_yes / total_cust) * 100 if total_cust > 0 else 0.0
+            hist_card_subtext = f"{hist_yes} / {total_cust} actual churners"
+            hist_card_val = f"{hist_rate:.1f}%"
+        else:
+            hist_card_val = "N/A"
+            hist_card_subtext = "Target not found"
+
+        # Display Pipeline Status Message
+        model_msg = df_res.attrs.get('model_status_msg', '')
+        if model_msg:
+            st.info(f"ℹ️ {model_msg}")
+
+        k1, k2, k3, k4, k5, k6, k7 = st.columns(7)
+        k1.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-label">TOTAL CUSTOMERS</div>
+            <div class="kpi-value" style="color: #06B6D4;">{total_cust:,}</div>
+            <div class="kpi-subtext">Uploaded CSV count</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        k2.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-label">HISTORICAL CHURN</div>
+            <div class="kpi-value" style="color: #F59E0B;">{hist_card_val}</div>
+            <div class="kpi-subtext">{hist_card_subtext}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        k3.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-label">HIGH RISK</div>
+            <div class="kpi-value" style="color: #EF4444;">{high_risk_count:,}</div>
+            <div class="kpi-subtext">Prob &ge; {int(high_thresh*100)}%</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        k4.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-label">MEDIUM RISK</div>
+            <div class="kpi-value" style="color: #F59E0B;">{med_risk_count:,}</div>
+            <div class="kpi-subtext">{int(low_thresh*100)}% - {int(high_thresh*100)}%</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        k5.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-label">LOW RISK</div>
+            <div class="kpi-value" style="color: #22C55E;">{low_risk_count:,}</div>
+            <div class="kpi-subtext">Prob &lt; {int(low_thresh*100)}%</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        k6.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-label">PREDICTED CHURN</div>
+            <div class="kpi-value" style="color: #6366F1;">{pred_churn_rate:.1f}%</div>
+            <div class="kpi-subtext">{pred_churn_count:,} predicted</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        k7.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-label">AVG ACTIVE DAYS</div>
+            <div class="kpi-value" style="color: #22C55E;">{act_str}</div>
+            <div class="kpi-subtext">Usage activity signal</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+
+        # Simple Bar Charts Only
+        col_c1, col_c2, col_c3 = st.columns(3)
+
+        with col_c1:
+            st.markdown("<div class='dark-card-title'>1. Customer Risk Distribution</div>", unsafe_allow_html=True)
+            risk_df = pd.DataFrame({
+                'Risk Level': ['High Risk', 'Medium Risk', 'Low Risk'],
+                'Customer Count': [high_risk_count, med_risk_count, low_risk_count]
+            })
+            fig_risk = px.bar(
+                risk_df, 
+                x='Risk Level', 
+                y='Customer Count',
+                color='Risk Level',
+                color_discrete_map={'High Risk': '#EF4444', 'Medium Risk': '#F59E0B', 'Low Risk': '#22C55E'},
+                text='Customer Count'
+            )
+            fig_risk = apply_dark_plotly_theme(fig_risk, "")
+            fig_risk.update_traces(textposition='outside')
+            fig_risk.update_layout(showlegend=False)
+            st.plotly_chart(fig_risk, width="stretch")
+
+        with col_c2:
+            st.markdown("<div class='dark-card-title'>2. Predicted Churn Distribution</div>", unsafe_allow_html=True)
+            churn_pred_counts = df_res['PredictedChurn'].value_counts().reset_index()
+            churn_pred_counts.columns = ['Predicted Churn', 'Customer Count']
+            fig_churn = px.bar(
+                churn_pred_counts, 
+                x='Predicted Churn', 
+                y='Customer Count',
+                color='Predicted Churn',
+                color_discrete_map={'Yes': '#EF4444', 'No': '#22C55E'},
+                text='Customer Count'
+            )
+            fig_churn = apply_dark_plotly_theme(fig_churn, "")
+            fig_churn.update_traces(textposition='outside')
+            fig_churn.update_layout(showlegend=False)
+            st.plotly_chart(fig_churn, width="stretch")
+
+        with col_c3:
+            st.markdown("<div class='dark-card-title'>3. Top Churn Factors</div>", unsafe_allow_html=True)
+            feat_imp_df = df_res.attrs.get('feat_importances', None)
+            if feat_imp_df is not None and not feat_imp_df.empty:
+                top_feats = feat_imp_df.head(6).sort_values('Importance', ascending=True)
+                fig_imp = px.bar(
+                    top_feats, 
+                    y='Feature', 
+                    x='Importance', 
+                    orientation='h',
+                    color='Importance',
+                    color_continuous_scale=['#172033', '#6366F1']
+                )
+                fig_imp = apply_dark_plotly_theme(fig_imp, "")
+                fig_imp.update_layout(showlegend=False, coloraxis_showscale=False)
+                fig_imp.update_yaxes(title="")
+                st.plotly_chart(fig_imp, width="stretch")
+            else:
+                st.info("Feature importance chart unavailable for current feature set.")
+
+        # Key Executive Insights Card
+        vulnerable_seg = df_res.groupby('BehaviorSegment')['ChurnProbability_Raw'].mean().idxmax()
+        vuln_prob = df_res.groupby('BehaviorSegment')['ChurnProbability_Raw'].mean().max() * 100
+
+        st.markdown(f"""
+        <div class="dark-card">
+            <div class="dark-card-title">📌 Executive Dataset Summary ({total_cust} Uploaded Customers)</div>
+            <ul style="color: #F8FAFC; font-size: 14px; line-height: 1.8;">
+                <li><strong>High Risk Magnitude:</strong> <strong>{high_risk_count:,} out of {total_cust:,} customers ({high_risk_count/total_cust*100:.1f}%)</strong> fall into the High Risk category (churn probability &ge; {int(high_thresh*100)}%).</li>
+                <li><strong>Most Vulnerable Segment:</strong> <strong>{vulnerable_seg}</strong> exhibits the highest average churn probability at <strong>{vuln_prob:.1f}%</strong>.</li>
+                <li><strong>Pipeline Execution:</strong> {model_msg}.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+
+# PAGE 3: CUSTOMER RISK TABLE
+elif nav == "3. Customer Risk Table":
+    if check_analysis_ready():
+        df_res = st.session_state['df_analyzed']
+        total_cust = len(df_res)
+        
+        st.markdown(f"""
+        <div class="dark-card">
+            <div class="dark-card-title">📋 Complete Customer Risk Intelligence Table ({total_cust} Records)</div>
+            <p style="color: #94A3B8; font-size: 14px;">
+                Filter, search, and export customer risk profiles calculated across the ML prediction pipeline for the uploaded dataset.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            search_id = st.text_input("Search Customer ID:", placeholder="e.g. C001")
+        with c2:
+            risk_flt = st.multiselect("Risk Level:", ["High Risk", "Medium Risk", "Low Risk"], default=["High Risk", "Medium Risk", "Low Risk"])
+        with c3:
+            seg_list = list(df_res['BehaviorSegment'].unique())
+            seg_flt = st.multiselect("Behavior Segment:", seg_list, default=seg_list)
+
+        df_filtered = df_res[
+            (df_res['RiskLevel'].isin(risk_flt)) &
+            (df_res['BehaviorSegment'].isin(seg_flt))
+        ].copy()
+
+        if search_id:
+            df_filtered = df_filtered[df_filtered['customerID'].str.contains(search_id, case=False)]
+
+        df_filtered = df_filtered.sort_values(by='ChurnProbability_Raw', ascending=False)
+
+        # Columns to display
+        display_cols = ['customerID']
+        if 'ActiveDays' in df_filtered.columns and df_filtered['ActiveDays'].notnull().any():
+            display_cols.append('ActiveDays')
+        display_cols.extend(['ChurnProbability', 'PredictedChurn', 'RiskLevel', 'BehaviorSegment', 'ImportantRiskFactors'])
+
+        st.dataframe(
+            df_filtered[display_cols], 
+            width="stretch", 
+            height=480
+        )
+
+        st.markdown(f"<div style='color: #94A3B8; font-size: 13px; margin-top: 4px;'>Displaying {len(df_filtered)} out of {total_cust} uploaded customer records.</div>", unsafe_allow_html=True)
+
+        # Download Risk Report CSV
+        csv_data = df_filtered.to_csv(index=False).encode('utf-8')
+        st.download_button(
+            label="📥 Download Customer Risk Report (CSV)",
+            data=csv_data,
+            file_name="customer_churn_risk_report.csv",
+            mime="text/csv"
+        )
+
+# PAGE 4: WHY CUSTOMERS MAY CHURN
+elif nav == "4. Why Customers May Churn":
+    if check_analysis_ready():
+        df_res = st.session_state['df_analyzed']
+        df_raw = st.session_state['df_raw']
+        total_cust = len(df_res)
+
+        st.markdown(f"""
+        <div class="dark-card">
+            <div class="dark-card-title">❓ Why Might This Customer Churn? (Model Explanations)</div>
+            <p style="color: #94A3B8; font-size: 14px;">
+                Individual customer risk factors and feature contributions derived from the model.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        customer_list = df_res['customerID'].tolist()
+        selected_cust_id = st.selectbox("Select Customer ID to Inspect Risk Drivers:", customer_list)
+
+        cust_idx = df_res[df_res['customerID'] == selected_cust_id].index[0]
+        cust_res = df_res.loc[cust_idx]
+
+        col_x1, col_x2 = st.columns([0.9, 1.1])
+
+        with col_x1:
+            st.markdown(f"""
+            <div style="background-color: #172033; padding: 20px; border-radius: 12px; border: 1px solid #1E293B;">
+                <div style="color: #6366F1; font-weight: 700; font-size: 18px; margin-bottom: 8px;">Customer Profile: {selected_cust_id}</div>
+                <div style="margin-bottom: 6px;"><strong style="color: #94A3B8;">Predicted Churn Probability:</strong> <span style="color: #06B6D4; font-size: 18px; font-weight: 700;">{cust_res['ChurnProbability']}</span></div>
+                <div style="margin-bottom: 6px;"><strong style="color: #94A3B8;">Risk Level:</strong> <span style="color: {'#EF4444' if cust_res['RiskLevel']=='High Risk' else '#F59E0B' if cust_res['RiskLevel']=='Medium Risk' else '#22C55E'}; font-weight: 700;">{cust_res['RiskLevel']}</span></div>
+                <div style="margin-bottom: 6px;"><strong style="color: #94A3B8;">Predicted Churn:</strong> <span style="color: #F8FAFC;">{cust_res['PredictedChurn']}</span></div>
+                <div style="margin-bottom: 6px;"><strong style="color: #94A3B8;">Behavior Segment:</strong> <span style="color: #F8FAFC;">{cust_res['BehaviorSegment']}</span></div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col_x2:
+            st.markdown("""
+            <div style="background-color: #172033; padding: 20px; border-radius: 12px; border: 1px solid #1E293B; height: 100%;">
+                <div style="color: #F59E0B; font-weight: 700; font-size: 16px; margin-bottom: 12px;">WHY THIS CUSTOMER MAY CHURN</div>
+            """, unsafe_allow_html=True)
+
+            factors = str(cust_res['ImportantRiskFactors']).split(" • ")
+            for factor in factors:
+                st.markdown(f"<div style='color: #F8FAFC; font-size: 14px; margin-bottom: 8px;'>• {factor}</div>", unsafe_allow_html=True)
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+        st.subheader("At-Risk Customers & Model Explanations Summary")
+        
+        at_risk_df = df_res[df_res['RiskLevel'].isin(['High Risk', 'Medium Risk'])][['customerID', 'ChurnProbability', 'RiskLevel', 'ImportantRiskFactors']]
+        if not at_risk_df.empty:
+            st.dataframe(at_risk_df, width="stretch")
+        else:
+            st.info("No customers are currently categorized as High or Medium Risk.")
+
+# PAGE 5: BEHAVIOR MINING
+elif nav == "5. Behavior Mining":
+    if check_analysis_ready():
+        df_res = st.session_state['df_analyzed']
+        df_raw = st.session_state['df_raw']
+        total_cust = len(df_res)
+
+        st.markdown(f"""
+        <div class="dark-card">
+            <div class="dark-card-title">🧩 Customer Behavior Mining &amp; Segmentation ({total_cust} Customers)</div>
+            <p style="color: #94A3B8; font-size: 14px;">
+                Unsupervised K-Means clustering on uploaded customer behavioral attributes.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        seg_analysis = df_res.groupby('BehaviorSegment').agg(
+            Customer_Count=('customerID', 'count'),
+            Avg_Churn_Probability=('ChurnProbability_Raw', lambda x: f"{x.mean()*100:.1f}%"),
+            High_Risk_Count=('RiskLevel', lambda x: (x == 'High Risk').sum())
+        ).reset_index()
+
+        col_b1, col_b2 = st.columns([1, 1])
+        with col_b1:
+            st.subheader("Behavior Segment Comparison")
+            st.dataframe(seg_analysis, width="stretch")
+
+        with col_b2:
+            st.subheader("Behavior Segment Distribution")
+            seg_counts = df_res['BehaviorSegment'].value_counts().reset_index()
+            seg_counts.columns = ['Behavior Segment', 'Customer Count']
+            fig_seg = px.bar(
+                seg_counts, 
+                x='Behavior Segment', 
+                y='Customer Count',
+                color='Behavior Segment',
+                color_discrete_sequence=['#6366F1', '#06B6D4', '#22C55E', '#F59E0B'],
+                text='Customer Count'
+            )
+            fig_seg = apply_dark_plotly_theme(fig_seg, "")
+            fig_seg.update_traces(textposition='outside')
+            fig_seg.update_layout(showlegend=False)
+            st.plotly_chart(fig_seg, width="stretch")
+
+        st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+        # Churn Risk Breakdown across Behavior Segments Bar Chart
+        fig_seg_risk = px.bar(
+            df_res.groupby(['BehaviorSegment', 'RiskLevel']).size().reset_index(name='Count'),
+            x='BehaviorSegment',
+            y='Count',
+            color='RiskLevel',
+            color_discrete_map={'Low Risk': '#22C55E', 'Medium Risk': '#F59E0B', 'High Risk': '#EF4444'},
+            barmode='group'
+        )
+        fig_seg_risk = apply_dark_plotly_theme(fig_seg_risk, "Risk Breakdown across Behavior Segments")
+        st.plotly_chart(fig_seg_risk, width="stretch")
+
+# PAGE 6: MODEL PERFORMANCE & ROC CURVE
+elif nav == "6. Model Performance & ROC Curve":
+    if check_analysis_ready():
+        df_res = st.session_state['df_analyzed']
+        total_cust = len(df_res)
+        
+        # Use only metrics calculated from actual labels vs predictions.
+        # No hard-coded fallback values.
+        metrics = st.session_state.get('metrics', {
+            'Accuracy': 'N/A',
+            'Precision': 'N/A',
+            'Recall': 'N/A',
+            'F1-Score': 'N/A',
+            'ROC-AUC': 'N/A'
+        })
+
+        cm = st.session_state.get(
+            'confusion_matrix',
+            np.array([[0, 0], [0, 0]])
+        )
+
+        roc_data = st.session_state.get(
+            'roc_curve',
+            {'fpr': [0.0, 1.0], 'tpr': [0.0, 1.0], 'auc': None}
+        )
+
+        st.markdown("""
+        <div class="dark-card">
+            <div class="dark-card-title">⚙️ Machine Learning Model Performance &amp; Evaluation Diagnostics</div>
+            <p style="color: #94A3B8; font-size: 14px;">
+                Accuracy, Precision, Recall, F1-Score, Confusion Matrix, and ROC Curve calculated from historical churn labels versus model predictions.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Classification Metrics Display Cards
+        m1, m2, m3, m4, m5 = st.columns(5)
+        m1.metric("ACCURACY", metrics.get('Accuracy', 'N/A'))
+        m2.metric("PRECISION", metrics.get('Precision', 'N/A'))
+        m3.metric("RECALL", metrics.get('Recall', 'N/A'))
+        m4.metric("F1-SCORE", metrics.get('F1-Score', 'N/A'))
+        m5.metric("ROC-AUC", metrics.get('ROC-AUC', 'N/A'))
+
+        st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+        col_m1, col_m2 = st.columns(2)
+
+        with col_m1:
+            st.subheader("Confusion Matrix")
+            cm_z = cm.tolist() if hasattr(cm, 'tolist') else [[0,0],[0,0]]
+            cm_text = [[f"TN: {cm_z[0][0]}", f"FP: {cm_z[0][1]}"],
+                       [f"FN: {cm_z[1][0]}", f"TP: {cm_z[1][1]}"]]
+            
+            fig_cm = go.Figure(data=go.Heatmap(
+                z=cm_z,
+                x=['Predicted Retained', 'Predicted Churn'],
+                y=['Actual Retained', 'Actual Churn'],
+                text=cm_text,
+                texttemplate="%{text}",
+                colorscale=[[0, '#172033'], [1, '#6366F1']],
+                showscale=False
+            ))
+            fig_cm = apply_dark_plotly_theme(fig_cm, "Confusion Matrix")
+            st.plotly_chart(fig_cm, width="stretch")
+
+        with col_m2:
+            st.subheader("ROC Curve")
+            fpr = roc_data.get('fpr', [0.0, 1.0])
+            tpr = roc_data.get('tpr', [0.0, 1.0])
+            auc_score = roc_data.get('auc')
+
+            fig_roc = go.Figure()
+
+            if auc_score is not None:
+                roc_name = f"ROC Curve (AUC = {auc_score:.3f})"
+            else:
+                roc_name = "ROC Curve (AUC unavailable)"
+
+            fig_roc.add_trace(go.Scatter(
+                x=fpr, y=tpr,
+                mode='lines',
+                name=roc_name,
+                line=dict(color='#06B6D4', width=3)
+            ))
+            fig_roc.add_trace(go.Scatter(
+                x=[0, 1], y=[0, 1], 
+                mode='lines', 
+                name="Random Baseline",
+                line=dict(color='#94A3B8', dash='dash')
+            ))
+            fig_roc = apply_dark_plotly_theme(fig_roc, "ROC Curve — Receiver Operating Characteristic")
+            fig_roc.update_layout(xaxis_title="False Positive Rate", yaxis_title="True Positive Rate")
+            st.plotly_chart(fig_roc, width="stretch")
